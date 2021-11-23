@@ -11,9 +11,11 @@
 #include <algorithm>
 #include <vector>
 #include <map>
+#include <set>
 #include <unordered_map>
 
 #include "AwareHash.h"
+#include "parameters.h"
 
 typedef const char* Key_t;
 

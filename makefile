@@ -1,8 +1,8 @@
 CC = g++
 FLAGS = -O2 -std=c++17
 
-nze: experiment.cpp sketch.h BloomFilter.h HashTable.h CMsketch.h parameters.h common.h AwareHash.h
-	$(CC) $(FLAGS) experiment.cpp -o nze
+cf: experiment.cpp cuckooFilter.h BloomFilter.h parameters.h common.h AwareHash.h
+	$(CC) $(FLAGS) experiment.cpp -o cf
 
 clean:
-	rm nze
+	rm cf

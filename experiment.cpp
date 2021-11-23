@@ -1,11 +1,12 @@
-#include "sketch.h"
+#include "cuckooFilter.h"
 
 using namespace std;
 
 const char *path = "./data/test-8s.dat";
 vector<trace_t> traces;
-map<trace_t, uint32_t> ground_truth;
-NZEsketch<uint32_t, uint32_t, SLOT_NUM, CM_DEPTH, CM_WIDTH, BLOOM_SIZE, BLOOM_HASH_NUM> nze;
+set<trace_t> positiveSample;
+set<trace_t> negativeSample;
+cuckooFilter<uint64_t, FINGERPRINTNUM, FINGERPRINTBITSIZE> cf;
 
 int readTraces(const char *path) {
 	FILE *inputData = fopen(path, "rb");
@@ -30,51 +31,70 @@ int main() {
 	//read the traces
 	int size = readTraces(path);
 	int break_number = 100000;
-	double are = 0, perFlowARE = 0;
-	int packetCnt = 0, staisfiedFlowCnt = 0;
+	int break_number_negative = 100000;
+	int failCnt = 0;
+	int right = 0, wrong = 0;
 	bool lastFlow = false;
 
-	/********************* NZE sketch ***************************/
+	/********************* Cuckoo Filter ***************************/
 
-	//get the ground truth & insert
+	//Get the ground truth & insert
 	for (int i = 0; i < size; ++i) {
-		if (ground_truth.find(traces[i]) != ground_truth.end()) {
-			ground_truth[traces[i]] += 1;
-		}
-		else if (!lastFlow) {
-			ground_truth[traces[i]] = 1;
-			if (ground_truth.size() == break_number)
-				lastFlow = true;
-		}
-		else {
-			continue;
-		}
-
-		nze.insert((Key_t)traces[i].str);
-		packetCnt++;
-	}
-	cout << "Insert " << packetCnt << " packets and " << break_number << " flows" << endl;
-
-	for (auto it = ground_truth.begin(); it != ground_truth.end(); it++) {
-		uint32_t ans = nze.query((Key_t)it->first.str);
-		if (ans != it->second) {
-			perFlowARE = fabs((double)ans - (double)it->second) / (double)it->second;
-			are += perFlowARE;
-			if (perFlowARE <= 0.001) {
-				staisfiedFlowCnt++;
+		if (!lastFlow) {
+			if (positiveSample.find(traces[i]) == positiveSample.end()) {
+				positiveSample.insert(traces[i]);
+				int ret = cf.insert((Key_t)traces[i].str);
+				if (--break_number == 0)
+					lastFlow = true;
+				if (ret) {
+					failCnt++;
+				}
+					
 			}
-			// cout << ans << " " << it->second << endl;
 		}
 		else {
-			staisfiedFlowCnt++;
+			if (positiveSample.find(traces[i]) == positiveSample.end() && negativeSample.find(traces[i]) == negativeSample.end()) {
+				negativeSample.insert(traces[i]);
+				if (--break_number_negative == 0)
+					break;
+			}
+				
+		}
+	}
+	cout << "Insert " << positiveSample.size() << " positive samples and " << negativeSample.size() << " negative samples" << endl;
+
+	//Query
+	for (auto it = positiveSample.begin(); it != positiveSample.end(); it++) {
+		bool ans = cf.query((Key_t)it->str);
+		if (ans)
+			right++;
+		else {
+			wrong++;
+			// for (int i = 0; i < KEY_T_SIZE; ++i)
+			// 	cout << (uint32_t)(uint8_t)it->str[i] << " ";
+			// cout << endl;
 		}
 	}
 
-	size_t nzeSize = nze.get_memory_usage();
+	cout << "----- positive smaples -----" << endl;
+	cout << "Right: " << right << endl;
+	cout << "Wrong: " << wrong << endl;
+	cout << failCnt << " flows not inserted successfully" << endl;
 
-	are /= ground_truth.size();
-	cout << "ARE of NZE:" << are << endl;
-	cout << "Satisfied flow proportion:" << (double)staisfiedFlowCnt / break_number * 100 << "%" << endl;
+	for (auto it = negativeSample.begin(); it != negativeSample.end(); it++) {
+		bool ans = cf.query((Key_t)it->str);
+		if (!ans)
+			right++;
+		else
+			wrong++;
+	}
+
+	size_t cfSize = cf.getMemoryUsage();
+
+	cout << "----- negative smaples -----" << endl;
+	cout << "Right: " << right << endl;
+	cout << "Wrong: " << wrong << endl;
+	cout << "Cuckoo Filter Size:" << cfSize / (double)1024 << "KB" << endl;
 
 	return 0;
 }
