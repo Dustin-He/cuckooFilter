@@ -43,7 +43,6 @@ public:
 		else {
 			mask2 = ~(((uint64_t)1 << ( 2 * INT64BIT - (startBit + fingerprintBitSize))) - 1);
 			ret = (((*startPointer) & mask1) << (startBit + fingerprintBitSize - INT64BIT)) + (((*(startPointer + 1)) & mask2) >> (2 * INT64BIT - (startBit + fingerprintBitSize)));
-			// std::cout << startPointer << " " << startPointer + 1<< std::endl;
 		}
 
 		return ret;
@@ -101,6 +100,7 @@ class cuckooFilter {
 	int replacementCounter;
 	uint64_t h, s, n, hf, sf, nf;
 	uint8_t testkey[KEY_T_SIZE] = {127, 58, 87, 119, 244, 158, 83, 125, 0, 80, 110, 39, 6};
+	uint64_t fingerprintLength = fingerprintBitSize / BYTE2BIT + (fingerprintBitSize % BYTE2BIT != 0);
 
 	uint32_t calcPosition(Key_t key) {
 		return (uint32_t)(AwareHash((unsigned char *)key, KEY_T_SIZE, h, s, n) % fingerprintNum);
@@ -111,7 +111,7 @@ class cuckooFilter {
 	}
 
 	uint32_t calcFingerprintHash(uint64_t *fingerprint) {
-		uint32_t ans = (uint32_t)(AwareHash((unsigned char *)fingerprint, INT64BYTE, h, s, n) % fingerprintNum);
+		uint32_t ans = (uint32_t)(AwareHash((unsigned char *)fingerprint, fingerprintLength, h, s, n) % fingerprintNum);
 		return ans;
 	}
 
@@ -151,6 +151,7 @@ public:
 		sf = GenHashSeed(index++);
 		nf = GenHashSeed(index++);
 		replacementCounter = 0;
+		srand((unsigned)time(NULL));
 	}
 
 	int insert(Key_t key) {
@@ -158,25 +159,27 @@ public:
 		uint64_t fingerprint = calcFingerprint(key), tmpFingerprint;
 		int index = -1;
 		int ret;
+		replacementCounter = 0;
 
 		assert(position1 < fingerprintNum);
 
 		// bool flag = compareKey(key);
 		
 		while ((ret = hasEmptyBucket(position1, index, fingerprint)) == NOT_EMPTY) {
-			tmpFingerprint = fingerprints[0].get(position1);
-			fingerprints[0].assign(position1, fingerprint);
+			int rindex = rand() % BUCKET_NUM;
+			// int rindex = 0;
+			tmpFingerprint = fingerprints[rindex].get(position1);
+			fingerprints[rindex].assign(position1, fingerprint);
 			position1 ^= calcFingerprintHash(&tmpFingerprint);
 			assert(position1 < fingerprintNum);
 			fingerprint = tmpFingerprint;
 			replacementCounter++;
 			if (replacementCounter > MAX_TRY) {
-				std::cout << "Too many replacements!" << std::endl;
+				// std::cout << "Too many replacements!" << std::endl;
 				return 1;
 			}
 		}
 		if (ret == IS_EMPTY) {
-			// std::cout << "In insert:" << position1  << std::endl;
 			fingerprints[index].assign(position1, fingerprint);
 		}
 		return 0;
@@ -207,11 +210,12 @@ public:
 	double getLoadRate() {
 		double cnt = 0;
 		for (int i = 0; i < BUCKET_NUM; ++i) {
-			for (int j = 0; j < fingerprintNum; ++i) {
+			for (int j = 0; j < fingerprintNum; ++j) {
 				if (fingerprints[i].get(j) != 0)
 					cnt += 1;
 			}
 		}
+		// std::cout << cnt << std::endl;
 		return cnt / (BUCKET_NUM * fingerprintNum);
 	}
 

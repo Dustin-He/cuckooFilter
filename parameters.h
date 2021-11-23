@@ -5,14 +5,14 @@
 #define BYTE2BIT 8
 #define INT64BIT 64
 #define INT64BYTE 8
-#define MAX_TRY 10000
+#define MAX_TRY 1000
 #define BUCKET_NUM 4
-#define FINGERPRINTNUM (1 << 18)
-#define FINGERPRINTBITSIZE 18
+#define FINGERPRINTNUM (1 << 15)
+#define FINGERPRINTBITSIZE 24
 
 //parameters of Bloom Filter
-#define BLOOM_SIZE (1 << 20)
-#define BLOOM_HASH_NUM 11
+#define BLOOM_SIZE (1 << 19)
+#define BLOOM_HASH_NUM 7
 
 //Key length
 #define KEY_T_SIZE 13

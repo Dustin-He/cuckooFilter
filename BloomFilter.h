@@ -16,7 +16,7 @@ public:
     bool getbit(Key_t k);
     void setbit(Key_t k);
     void reset();
-    size_t get_memory_usage();
+    size_t getMemoryUsage();
     int get_hash_num();
 };
 
@@ -62,7 +62,7 @@ void BloomFilter<w, hash_num>::reset() {
 }
 
 template<uint32_t w, int hash_num>
-size_t BloomFilter<w, hash_num>::get_memory_usage() {
+size_t BloomFilter<w, hash_num>::getMemoryUsage() {
     return size;
 }
 

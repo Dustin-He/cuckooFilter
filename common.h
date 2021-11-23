@@ -13,6 +13,7 @@
 #include <map>
 #include <set>
 #include <unordered_map>
+#include <ctime>
 
 #include "AwareHash.h"
 #include "parameters.h"
